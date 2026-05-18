@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KinetiKey</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0d1117;
+    --surface: #161b22;
+    --border:  #30363d;
+    --text:    #e6edf3;
+    --muted:   #8b949e;
+    --green:   #3fb950;
+    --red:     #f85149;
+    --blue:    #58a6ff;
+    --orange:  #ffa657;
+    --purple:  #bc8cff;
+    --yellow:  #e3b341;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px 28px;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 28px;
+    gap: 16px;
+  }
+  header h1 { font-size: 1.6rem; font-weight: 800; letter-spacing: -1px; }
+  header h1 span { color: var(--blue); }
+
+  #conn-pill {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+  }
+  #conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: background .3s; }
+  #conn-dot.on { background: var(--green); }
+
+  /* ── Layout grid ── */
+  .row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    flex: 1;
+  }
+  .label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  /* ── Mode badge ── */
+  #mode-badge {
+    display: inline-block;
+    padding: 5px 18px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    background: var(--border);
+    color: var(--muted);
+    transition: all .3s;
+  }
+  #mode-badge.RECORD { background: #1a3020; color: var(--green); }
+  #mode-badge.UNLOCK { background: #0f1f38; color: var(--blue); }
+
+  /* ── Lock icon ── */
+  #lock-wrap { text-align: center; }
+  #lock-icon { font-size: 3rem; line-height: 1; margin-bottom: 6px; }
+  #lock-text {
+    font-weight: 700; font-size: 1rem;
+    color: var(--muted); transition: color .3s;
+  }
+  #lock-text.success { color: var(--green); }
+  #lock-text.denied  { color: var(--red); }
+
+  /* ── PIN display ── */
+  #pin-row {
+    display: flex; gap: 14px; justify-content: center;
+    margin-top: 6px;
+  }
+
+  .pin-slot {
+    width: 72px; height: 90px;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px;
+    position: relative;
+    transition: all .25s;
+  }
+  .pin-slot .slot-n {
+    position: absolute; top: 5px; left: 8px;
+    font-size: 0.6rem; color: var(--muted);
+  }
+  .pin-slot svg { width: 30px; height: 30px; }
+  .pin-slot .slot-digit {
+    font-size: 1.6rem; font-weight: 900; line-height: 1;
+    color: var(--muted);
+  }
+
+  .pin-slot.filled-1 { border-style: solid; border-color: var(--orange); background: #251809; }
+  .pin-slot.filled-1 .slot-digit { color: var(--orange); }
+
+  .pin-slot.filled-2 { border-style: solid; border-color: var(--blue); background: #0b1a2e; }
+  .pin-slot.filled-2 .slot-digit { color: var(--blue); }
+
+  .pin-slot.filled-3 { border-style: solid; border-color: var(--purple); background: #1a0e2e; }
+  .pin-slot.filled-3 .slot-digit { color: var(--purple); }
+
+  /* ── Shape flash overlay ── */
+  #shape-flash {
+    flex: 0 0 200px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px;
+    min-height: 180px;
+  }
+  #shape-flash svg { width: 100px; height: 100px; opacity: 0; transition: opacity .2s; }
+  #shape-flash svg.show { opacity: 1; }
+  #shape-name {
+    font-size: 1rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); transition: color .2s;
+  }
+  #shape-digit-label {
+    font-size: 2.4rem; font-weight: 900; color: var(--muted);
+    transition: color .2s;
+  }
+
+  /* ── Legend ── */
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+  .legend-item svg { width: 22px; height: 22px; }
+
+  /* ── Log ── */
+  #log {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    height: 200px;
+    overflow-y: auto;
+    display: flex; flex-direction: column-reverse;
+    gap: 3px;
+  }
+  .log-row { padding: 1px 0; color: var(--muted); border-bottom: 1px solid #ffffff07; }
+  .log-row.d  { color: var(--orange); }
+  .log-row.e  { color: var(--yellow); }
+  .log-row.ok { color: var(--green); font-weight: 700; }
+  .log-row.no { color: var(--red);   font-weight: 700; }
+  .log-row.mo { color: var(--blue); }
+
+  /* ── Animations ── */
+  @keyframes pop {
+    0%   { transform: scale(0.7); opacity: 0; }
+    60%  { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .pop { animation: pop .35s ease-out forwards; }
+
+  @keyframes shake-flash {
+    0%,100% { border-color: var(--border); }
+    50%     { border-color: var(--yellow); background: #2a2200; }
+  }
+  .shake-anim { animation: shake-flash .4s ease; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Kineti<span>Key</span></h1>
+  <div id="conn-pill"><div id="conn-dot"></div><span id="conn-text">Waiting for board…</span></div>
+</header>
+
+<!-- Row 1: mode + PIN + shape flash -->
+<div class="row">
+
+  <!-- Mode + PIN -->
+  <div class="card" style="flex: 2;">
+    <div class="label">Mode</div>
+    <div style="margin-bottom: 20px;">
+      <span id="mode-badge" class="IDLE">IDLE</span>
+    </div>
+
+    <div class="label">PIN Entry</div>
+    <div id="pin-row">
+      <div class="pin-slot" id="ps0"><span class="slot-n">1</span><span class="slot-digit">_</span></div>
+      <div class="pin-slot" id="ps1"><span class="slot-n">2</span><span class="slot-digit">_</span></div>
+      <div class="pin-slot" id="ps2"><span class="slot-n">3</span><span class="slot-digit">_</span></div>
+      <div class="pin-slot" id="ps3"><span class="slot-n">4</span><span class="slot-digit">_</span></div>
+    </div>
+  </div>
+
+  <!-- Shape flash -->
+  <div class="card" style="flex: 1; min-width: 180px;">
+    <div class="label">Last Shape</div>
+    <div id="shape-flash">
+      <!-- Triangle -->
+      <svg id="svg-triangle" viewBox="0 0 100 100" style="display:none;">
+        <polygon points="50,8 94,88 6,88" fill="var(--orange)" stroke="var(--orange)" stroke-linejoin="round"/>
+      </svg>
+      <!-- Square -->
+      <svg id="svg-square" viewBox="0 0 100 100" style="display:none;">
+        <rect x="10" y="10" width="80" height="80" rx="8" fill="var(--blue)"/>
+      </svg>
+      <!-- Circle -->
+      <svg id="svg-circle" viewBox="0 0 100 100" style="display:none;">
+        <circle cx="50" cy="50" r="42" fill="var(--purple)"/>
+      </svg>
+
+      <div id="shape-digit-label">—</div>
+      <div id="shape-name">—</div>
+    </div>
+  </div>
+
+  <!-- Lock -->
+  <div class="card" style="flex: 0 0 140px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+    <div class="label" style="text-align:center;">Lock</div>
+    <div id="lock-wrap">
+      <div id="lock-icon">🔒</div>
+      <div id="lock-text">LOCKED</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Row 2: legend + log -->
+<div class="row">
+
+  <div class="card" style="flex: 1;">
+    <div class="label">Gesture Guide</div>
+    <div class="legend">
+      <div class="legend-item">
+        <svg viewBox="0 0 100 100"><polygon points="50,8 94,88 6,88" fill="var(--orange)"/></svg>
+        <span>Triangle = <strong>1</strong></span>
+      </div>
+      <div class="legend-item">
+        <svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" rx="8" fill="var(--blue)"/></svg>
+        <span>Square = <strong>2</strong></span>
+      </div>
+      <div class="legend-item">
+        <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="var(--purple)"/></svg>
+        <span>Circle = <strong>3</strong></span>
+      </div>
+      <div class="legend-item">
+        <span style="font-size:1.2rem;">↔</span>
+        <span>Shake = <strong>Erase</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="flex: 2;">
+    <div class="label">Event Log</div>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────────
+const SHAPE_COLOR = { TRIANGLE: "var(--orange)", SQUARE: "var(--blue)", CIRCLE: "var(--purple)" };
+const DIGIT_CLASS = { 1: "filled-1", 2: "filled-2", 3: "filled-3" };
+const SHAPE_SVG   = { TRIANGLE: "svg-triangle", SQUARE: "svg-square", CIRCLE: "svg-circle" };
+
+const DIGIT_SHAPE = { 1: "TRIANGLE", 2: "SQUARE", 3: "CIRCLE" };
+
+// ── DOM ────────────────────────────────────────────────────────────────────────
+const $dot       = document.getElementById("conn-dot");
+const $connText  = document.getElementById("conn-text");
+const $mode      = document.getElementById("mode-badge");
+const $lockIcon  = document.getElementById("lock-icon");
+const $lockText  = document.getElementById("lock-text");
+const $sDL       = document.getElementById("shape-digit-label");
+const $sName     = document.getElementById("shape-name");
+const $log       = document.getElementById("log");
+const slots      = [0,1,2,3].map(i => document.getElementById(`ps${i}`));
+const allSvgs    = ["svg-triangle","svg-square","svg-circle"].map(id => document.getElementById(id));
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function setMode(m) {
+  $mode.className = m;
+  $mode.textContent = m;
+}
+
+function setLock(state) {
+  if (state === "success") {
+    $lockIcon.textContent = "🔓"; $lockText.textContent = "UNLOCKED"; $lockText.className = "success";
+  } else if (state === "denied") {
+    $lockIcon.textContent = "🔒"; $lockText.textContent = "DENIED";   $lockText.className = "denied";
+  } else {
+    $lockIcon.textContent = "🔒"; $lockText.textContent = "LOCKED";   $lockText.className = "";
+  }
+}
+
+function renderPin(pin) {
+  slots.forEach((sl, i) => {
+    const digit = pin[i];
+    sl.className = "pin-slot";
+    sl.innerHTML = `<span class="slot-n">${i+1}</span>`;
+    if (digit !== undefined && digit !== null) {
+      sl.classList.add(DIGIT_CLASS[digit] || "");
+      sl.innerHTML += `<span class="slot-digit">${digit}</span>`;
+    } else {
+      sl.innerHTML += `<span class="slot-digit">_</span>`;
+    }
+  });
+}
+
+let shapeTimer = null;
+function flashShape(shape, digit) {
+  // Hide all
+  allSvgs.forEach(s => { s.style.display = "none"; s.classList.remove("pop"); });
+
+  const svgId = SHAPE_SVG[shape];
+  if (!svgId) return;
+  const svg = document.getElementById(svgId);
+  svg.style.display = "block";
+  void svg.offsetWidth; // force reflow
+  svg.classList.add("pop");
+
+  const color = SHAPE_COLOR[shape] || "var(--text)";
+  $sDL.textContent = digit || "?";
+  $sDL.style.color = color;
+  $sName.textContent = shape;
+  $sName.style.color = color;
+
+  clearTimeout(shapeTimer);
+  shapeTimer = setTimeout(() => {
+    svg.style.display = "none";
+    $sDL.textContent = "—"; $sDL.style.color = "var(--muted)";
+    $sName.textContent = "—"; $sName.style.color = "var(--muted)";
+  }, 2000);
+}
+
+function flashErase() {
+  slots.forEach(sl => {
+    sl.classList.add("shake-anim");
+    setTimeout(() => sl.classList.remove("shake-anim"), 450);
+  });
+}
+
+function addLog(text, cls) {
+  const ts = new Date().toLocaleTimeString("en", { hour12: false });
+  const d = document.createElement("div");
+  d.className = `log-row ${cls || ""}`;
+  d.textContent = `${ts}  ${text}`;
+  $log.prepend(d);
+  while ($log.children.length > 80) $log.lastChild.remove();
+}
+
+// ── Snapshot (initial state) ───────────────────────────────────────────────────
+function applySnapshot(s) {
+  setMode(s.mode || "IDLE");
+  setLock(s.lock || "locked");
+  renderPin(s.pin || []);
+}
+
+// ── Event handler ──────────────────────────────────────────────────────────────
+function handleEvent(ev) {
+  switch (ev.type) {
+
+    case "snapshot":
+      applySnapshot(ev);
+      $dot.classList.add("on");
+      $connText.textContent = "Board connected";
+      addLog("Dashboard connected", "mo");
+      break;
+
+    case "mode":
+      setMode(ev.mode || "IDLE");
+      if (ev.mode === "RECORD") {
+        renderPin([]);
+        setLock("locked");
+        allSvgs.forEach(s => s.style.display = "none");
+        $sDL.textContent = "—"; $sName.textContent = "—";
+      }
+      addLog(`Mode → ${ev.mode}`, "mo");
+      break;
+
+    case "digit": {
+      const pin = ev.pin || [];
+      renderPin(pin);
+      flashShape(ev.shape, ev.digit);
+      const modeTag = ev.mode === "RECORD" ? "REC" : "UNL";
+      addLog(`[${modeTag}] Digit ${ev.digit} (${ev.shape})  PIN: ${pin.join("")}`, "d");
+      $dot.classList.add("on");
+      $connText.textContent = "Board connected";
+      break;
+    }
+
+    case "erase": {
+      const pin = ev.pin || [];
+      renderPin(pin);
+      flashErase();
+      addLog(`[${ev.mode}] ← Erase  PIN: ${pin.length ? pin.join("") : "empty"}`, "e");
+      break;
+    }
+
+    case "unlock_result":
+      setLock(ev.result);
+      if (ev.result === "success") {
+        addLog("★ UNLOCKED!", "ok");
+      } else if (ev.result === "denied") {
+        addLog("✗ ACCESS DENIED", "no");
+        // Flash pin slots red
+        slots.forEach(sl => {
+          if (sl.className !== "pin-slot") {
+            sl.style.borderColor = "var(--red)";
+            setTimeout(() => sl.style.borderColor = "", 1200);
+          }
+        });
+      } else {
+        addLog("Timeout / aborted", "no");
+      }
+      setTimeout(() => renderPin([]), 2500);
+      break;
+  }
+}
+
+// ── SSE connection ─────────────────────────────────────────────────────────────
+function connect() {
+  const src = new EventSource("/events");
+
+  src.onmessage = e => {
+    try { handleEvent(JSON.parse(e.data)); }
+    catch(err) { console.error(err, e.data); }
+  };
+
+  src.onerror = () => {
+    $dot.classList.remove("on");
+    $connText.textContent = "Server disconnected — retrying…";
+    src.close();
+    setTimeout(connect, 3000);
+  };
+}
+
+connect();
+</script>
+</body>
+</html>
